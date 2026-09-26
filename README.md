@@ -8,6 +8,8 @@ plugin that produced each log using human-facing names such as `Mason` and
 clearing, or deleting logs. Logs can be sorted by last modified time, producer
 name, or file size.
 
+![Log Manager picker showing discovered logs and a live preview](assets/log-manager.png)
+
 ## Commands
 
 - `:LogManager` opens the log browser.
