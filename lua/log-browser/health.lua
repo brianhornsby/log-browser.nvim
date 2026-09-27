@@ -1,7 +1,7 @@
 local M = {}
 
 function M.check()
-  vim.health.start 'log-manager.nvim'
+  vim.health.start 'log-browser.nvim'
 
   local ok = pcall(require, 'snacks')
   if ok then
@@ -12,7 +12,7 @@ function M.check()
 
   vim.health.ok 'Native libuv follow mode is available'
 
-  local manager = require 'log-manager'
+  local manager = require 'log-browser'
   local logs = manager.discover()
   vim.health.ok(('Discovered %d log file%s'):format(#logs, #logs == 1 and '' or 's'))
 

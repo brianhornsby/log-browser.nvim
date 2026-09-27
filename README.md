@@ -1,4 +1,4 @@
-# log-manager.nvim
+# log-browser.nvim
 
 A Snacks-powered browser for Neovim and plugin log files.
 
@@ -8,14 +8,14 @@ plugin that produced each log using human-facing names such as `Mason` and
 clearing, or deleting logs. Logs can be sorted by last modified time, producer
 name, or file size.
 
-![Log Manager picker showing discovered logs and a live preview](assets/log-manager.png)
+![Log Browser picker showing discovered logs and a live preview](assets/log-browser.png)
 
 ## Commands
 
-- `:LogManager` opens the log browser.
-- `:LogManagerCleanup` deletes logs older than `cleanup_days` after confirmation.
-- `:LogManagerHealth` loads the plugin and reports dependency and discovery
-  problems. After the plugin is loaded, `:checkhealth log-manager` works too.
+- `:LogBrowser` opens the log browser.
+- `:LogBrowserCleanup` deletes logs older than `cleanup_days` after confirmation.
+- `:LogBrowserHealth` loads the plugin and reports dependency and discovery
+  problems. After the plugin is loaded, `:checkhealth log-browser` works too.
 
 Inside the Snacks picker:
 
@@ -51,8 +51,8 @@ The picker footer shows the active sort field and direction.
 
 ```lua
 {
-  dir = vim.fn.expand '~/dev/log-manager.nvim',
-  cmd = { 'LogManager', 'LogManagerCleanup', 'LogManagerHealth' },
+  dir = vim.fn.expand '~/dev/log-browser.nvim',
+  cmd = { 'LogBrowser', 'LogBrowserCleanup', 'LogBrowserHealth' },
   dependencies = { 'folke/snacks.nvim' },
   opts = {},
 }
@@ -61,7 +61,7 @@ The picker footer shows the active sort field and direction.
 Optional configuration:
 
 ```lua
-require('log-manager').setup {
+require('log-browser').setup {
   max_depth = 4,
   sort = 'modified', -- 'modified', 'name', or 'size'
   sort_direction = nil, -- defaults to ascending for name, descending otherwise

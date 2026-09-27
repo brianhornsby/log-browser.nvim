@@ -1,6 +1,6 @@
 vim.opt.runtimepath:prepend(vim.fn.getcwd())
 
-local manager = require 'log-manager'
+local manager = require 'log-browser'
 local root = vim.fn.tempname()
 local scan_root = root .. '/scan'
 vim.fn.mkdir(scan_root, 'p')
@@ -56,7 +56,7 @@ assert(#results == 1 and results[1].path == a, 'custom pattern failed')
 local ok = pcall(manager.setup, { sort = 'invalid' })
 assert(not ok, 'invalid sort modes should fail')
 
-manager.setup { roots = { '/private/tmp/log-manager-missing-root' }, files = {} }
+manager.setup { roots = { '/private/tmp/log-browser-missing-root' }, files = {} }
 assert(#manager.discover() == 0 and #manager.diagnostics > 0, 'missing roots should be diagnosed')
 
 local picker_options
@@ -90,4 +90,4 @@ local fake_picker = {
   find = function() end,
 }
 vim.fn.delete(root, 'rf')
-print 'log-manager tests passed'
+print 'log-browser tests passed'

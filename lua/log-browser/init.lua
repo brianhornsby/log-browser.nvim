@@ -709,7 +709,7 @@ function M.open()
           G = { 'open_at_end', desc = 'Open log at end' },
           F = { 'follow_log', desc = 'Follow log updates' },
           X = { 'delete_old_logs', desc = 'Delete old logs' },
-          ['?'] = { 'show_help', desc = 'Show log manager help' },
+          ['?'] = { 'show_help', desc = 'Show log browser help' },
           ['<space>'] = { 'action_menu', desc = 'Open log action menu' },
         },
       },
@@ -726,31 +726,31 @@ function M.setup(opts)
     end
   end
   if vim.fn.index(sort_modes, config.sort) == -1 then
-    error(('Invalid log-manager sort mode: %s'):format(vim.inspect(config.sort)))
+    error(('Invalid log-browser sort mode: %s'):format(vim.inspect(config.sort)))
   end
   if config.sort_direction ~= nil and config.sort_direction ~= 'asc' and config.sort_direction ~= 'desc' then
-    error(('Invalid log-manager sort direction: %s'):format(vim.inspect(config.sort_direction)))
+    error(('Invalid log-browser sort direction: %s'):format(vim.inspect(config.sort_direction)))
   end
   for _, pattern in ipairs(config.patterns) do
     local ok, err = pcall(string.match, '', pattern)
     if not ok then
-      error(('Invalid log-manager pattern %q: %s'):format(pattern, err))
+      error(('Invalid log-browser pattern %q: %s'):format(pattern, err))
     end
   end
   for _, pattern in ipairs(config.ignore) do
     local ok, err = pcall(string.match, '', pattern)
     if not ok then
-      error(('Invalid log-manager ignore pattern %q: %s'):format(pattern, err))
+      error(('Invalid log-browser ignore pattern %q: %s'):format(pattern, err))
     end
   end
   M.config = config
-  vim.api.nvim_create_user_command('LogManager', M.open, { desc = 'Browse and manage Neovim logs', force = true })
-  vim.api.nvim_create_user_command('LogManagerCleanup', function()
+  vim.api.nvim_create_user_command('LogBrowser', M.open, { desc = 'Browse and manage Neovim logs', force = true })
+  vim.api.nvim_create_user_command('LogBrowserCleanup', function()
     delete_old_logs()
   end, { desc = 'Delete old Neovim logs', force = true })
-  vim.api.nvim_create_user_command('LogManagerHealth', function()
-    vim.cmd.checkhealth 'log-manager'
-  end, { desc = 'Check log-manager health', force = true })
+  vim.api.nvim_create_user_command('LogBrowserHealth', function()
+    vim.cmd.checkhealth 'log-browser'
+  end, { desc = 'Check log-browser health', force = true })
 end
 
 return M
