@@ -11,7 +11,6 @@ local defaults = {
   patterns = { '%.log$', '/log$' },
   ignore = {},
   filters = {
-    empty = nil,
     min_size = 0,
     modified_after = nil,
     names = nil,
@@ -71,11 +70,6 @@ end
 
 local function is_visible(entry)
   local filters = M.config.filters
-  if filters.empty == true and entry.size > 0 then
-    return false
-  elseif filters.empty == false and entry.size == 0 then
-    return false
-  end
   if entry.size < filters.min_size then
     return false
   end
@@ -319,15 +313,43 @@ local function selected_items(picker, item)
   return item and { item } or {}
 end
 
-local function picker_title()
+local function target_summary(items)
+  if #items == 1 then
+    return ('%s (%s)'):format(items[1].name, items[1].file or items[1].path)
+  end
+  local paths = {}
+  for index, selected in ipairs(items) do
+    if index > 3 then
+      break
+    end
+    paths[#paths + 1] = selected.file or selected.path
+  end
+  local suffix = #items > #paths and (' and %d more'):format(#items - #paths) or ''
+  return ('%d selected logs:\n%s%s'):format(#items, table.concat(paths, '\n'), suffix)
+end
+
+local function sort_footer()
   local direction = M.config.sort_direction or (M.config.sort == 'name' and 'asc' or 'desc')
-  local filter = M.config.filters.empty == nil and 'all' or (M.config.filters.empty and 'empty' or 'non-empty')
-  return ('Neovim Logs — %s %s, %s'):format(M.config.sort, direction == 'asc' and '↑' or '↓', filter)
+  return (' Sort: %s %s '):format(M.config.sort, direction == 'asc' and '↑' or '↓')
+end
+
+local function update_sort_footer(picker)
+  if not picker or picker.closed or not picker.list.win or not picker.list.win.win then
+    return
+  end
+  picker.list.win.opts.footer = sort_footer()
+  vim.schedule(function()
+    if not picker.closed and vim.api.nvim_win_is_valid(picker.list.win.win) then
+      picker.list.win:update()
+    end
+  end)
 end
 
 local function refresh(picker)
   if picker and not picker.closed then
-    picker.title = picker_title()
+    if picker.list.win then
+      picker.list.win.opts.footer = sort_footer()
+    end
     local selected = {}
     for _, item in ipairs(picker:selected()) do
       selected[item.file] = true
@@ -354,6 +376,7 @@ local function refresh(picker)
         if cursor then
           picker.list:view(cursor)
         end
+        update_sort_footer(picker)
       end,
     }
   end
@@ -364,8 +387,7 @@ local function clear_selected(picker, item)
   if #items == 0 then
     return
   end
-  local target = #items == 1 and ('%s log (%s)'):format(items[1].name, items[1].file)
-    or ('%d selected logs'):format(#items)
+  local target = target_summary(items)
   confirm(('Clear %s? '):format(target), function()
     local cleared = 0
     for _, selected in ipairs(items) do
@@ -383,8 +405,7 @@ local function delete_selected(picker, item)
   if #items == 0 then
     return
   end
-  local target = #items == 1 and ('%s log (%s)'):format(items[1].name, items[1].file)
-    or ('%d selected logs'):format(#items)
+  local target = target_summary(items)
   confirm(('Permanently delete %s? '):format(target), function()
     local deleted, failures = 0, {}
     for _, selected in ipairs(items) do
@@ -407,7 +428,7 @@ local function clear_all(picker)
   if #entries == 0 then
     return
   end
-  confirm(('Clear all %d discovered logs? '):format(#entries), function()
+  confirm(('Clear all logs?\n%s'):format(target_summary(entries)), function()
     local cleared = 0
     for _, entry in ipairs(entries) do
       if clear_file(entry.path) then
@@ -427,25 +448,41 @@ local function cycle_sort(picker)
   refresh(picker)
 end
 
-local function set_sort(mode)
-  return function(picker)
-    if M.config.sort == mode then
-      local direction = M.config.sort_direction or (mode == 'name' and 'asc' or 'desc')
-      M.config.sort_direction = direction == 'asc' and 'desc' or 'asc'
-    else
-      M.config.sort = mode
-      M.config.sort_direction = nil
-    end
-    refresh(picker)
-  end
-end
-
-local function cycle_empty_filter(picker)
-  local current = M.config.filters.empty
-  M.config.filters.empty = current == nil and false or (current == false and true or nil)
-  local label = M.config.filters.empty == nil and 'all' or (M.config.filters.empty and 'empty' or 'non-empty')
-  vim.notify('Log filter: ' .. label)
-  refresh(picker)
+local function show_help(picker)
+  picker:close()
+  vim.schedule(function()
+    vim.cmd.new()
+    local buffer = vim.api.nvim_get_current_buf()
+    local lines = {
+      'Log Manager picker',
+      '',
+      'Navigation',
+      '  <Enter>  Open the selected log',
+      '  <Tab>    Select or unselect an item',
+      '  ?        Show this help',
+      '',
+      'Log actions',
+      '  c        Clear selected log(s)',
+      '  d        Delete selected log(s)',
+      '  C        Clear all discovered logs',
+      '  y        Copy selected paths',
+      '  R        Reveal the selected log directory',
+      '  G        Open the selected log at its end',
+      '  F        Follow the selected log',
+      '  X        Delete logs older than cleanup_days',
+      '',
+      'View controls',
+      '  s        Cycle sorting',
+      '  r        Refresh the log list',
+      '  q        Close this help',
+    }
+    vim.bo[buffer].buftype = 'nofile'
+    vim.bo[buffer].bufhidden = 'wipe'
+    vim.bo[buffer].swapfile = false
+    vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
+    vim.api.nvim_buf_set_keymap(buffer, 'n', 'q', '<cmd>close<cr>', { nowait = true, silent = true })
+    vim.api.nvim_buf_set_keymap(buffer, 'n', '<Esc>', '<cmd>close<cr>', { nowait = true, silent = true })
+  end)
 end
 
 local function copy_paths(picker, item)
@@ -480,15 +517,43 @@ local function follow_log(picker, item)
   if not item then
     return
   end
-  if vim.fn.executable 'tail' ~= 1 then
-    vim.notify('Following logs requires the `tail` command', vim.log.levels.ERROR)
-    return
-  end
   picker:close()
   vim.schedule(function()
-    vim.cmd.new()
-    vim.fn.termopen { 'tail', '-f', item.file }
-    vim.cmd 'startinsert'
+    vim.cmd.edit(vim.fn.fnameescape(item.file))
+    vim.cmd 'normal! G'
+    local buffer = vim.api.nvim_get_current_buf()
+    local timer = uv.new_timer()
+    if not timer then
+      return
+    end
+    local last_size = item.size
+    local last_modified = item.modified
+    timer:start(500, 500, vim.schedule_wrap(function()
+      if not vim.api.nvim_buf_is_valid(buffer) then
+        timer:stop()
+        timer:close()
+        return
+      end
+      local stat = uv.fs_stat(item.file)
+      if stat and (stat.size ~= last_size or (stat.mtime and stat.mtime.sec ~= last_modified)) then
+        last_size = stat.size
+        last_modified = stat.mtime and stat.mtime.sec or last_modified
+        vim.api.nvim_buf_call(buffer, function()
+          vim.cmd.checktime()
+          vim.cmd 'normal! G'
+        end)
+      end
+    end))
+    vim.api.nvim_create_autocmd('BufWipeout', {
+      buffer = buffer,
+      once = true,
+      callback = function()
+        if not timer:is_closing() then
+          timer:stop()
+          timer:close()
+        end
+      end,
+    })
   end)
 end
 
@@ -537,8 +602,29 @@ local function delete_old_logs(picker)
   end)
 end
 
+local function action_menu(picker, item)
+  local actions = {
+    ['Clear selected log(s)'] = clear_selected,
+    ['Delete selected log(s)'] = delete_selected,
+    ['Clear all discovered logs'] = clear_all,
+    ['Copy selected paths'] = copy_paths,
+    ['Reveal log directory'] = reveal_log,
+    ['Open log at end'] = open_at_end,
+    ['Follow log'] = follow_log,
+    ['Delete old logs'] = delete_old_logs,
+    ['Show help'] = show_help,
+  }
+  local labels = vim.tbl_keys(actions)
+  table.sort(labels)
+  vim.ui.select(labels, { prompt = 'Log action' }, function(choice)
+    if choice and actions[choice] then
+      actions[choice](picker, item)
+    end
+  end)
+end
+
 function M.open()
-  local function finder()
+  local function finder(_, ctx)
     local items = {}
     for index, entry in ipairs(M.discover()) do
       items[index] = {
@@ -554,7 +640,7 @@ function M.open()
   end
 
   require('snacks').picker {
-    title = picker_title(),
+    title = 'Neovim Logs',
     finder = finder,
     preview = preview_log,
     sort = { fields = { 'score:desc', 'idx' } },
@@ -570,7 +656,7 @@ function M.open()
           border = true,
           title = '{title} {live} {flags}',
           { win = 'input', height = 1, border = 'bottom' },
-          { win = 'list', border = 'none' },
+          { win = 'list', border = 'bottom', footer = sort_footer() },
         },
         { win = 'preview', title = '{preview}', border = true, width = 75 / 110 },
       },
@@ -590,16 +676,14 @@ function M.open()
         clear_all(picker)
       end,
       cycle_sort = cycle_sort,
-      sort_modified = set_sort 'modified',
-      sort_name = set_sort 'name',
-      sort_size = set_sort 'size',
-      cycle_empty_filter = cycle_empty_filter,
       refresh_logs = refresh,
       copy_paths = copy_paths,
       reveal_log = reveal_log,
       open_at_end = open_at_end,
       follow_log = follow_log,
       delete_old_logs = delete_old_logs,
+      show_help = show_help,
+      action_menu = action_menu,
     },
     win = {
       input = {
@@ -609,6 +693,8 @@ function M.open()
           ['<c-a>'] = { 'clear_all_logs', mode = { 'n', 'i' }, desc = 'Clear all logs' },
           ['<c-s>'] = { 'cycle_sort', mode = { 'n', 'i' }, desc = 'Cycle log sorting' },
           ['<c-r>'] = { 'refresh_logs', mode = { 'n', 'i' }, desc = 'Refresh logs' },
+          ['<c-?>'] = { 'show_help', mode = { 'n', 'i' }, desc = 'Show log manager help' },
+          ['<c-space>'] = { 'action_menu', mode = { 'n', 'i' }, desc = 'Open log action menu' },
         },
       },
       list = {
@@ -617,16 +703,14 @@ function M.open()
           d = { 'delete_log', desc = 'Delete log' },
           C = { 'clear_all_logs', desc = 'Clear all logs' },
           s = { 'cycle_sort', desc = 'Cycle log sorting' },
-          ['1'] = { 'sort_modified', desc = 'Sort by modified time' },
-          ['2'] = { 'sort_name', desc = 'Sort by name' },
-          ['3'] = { 'sort_size', desc = 'Sort by size' },
-          f = { 'cycle_empty_filter', desc = 'Cycle empty-file filter' },
           r = { 'refresh_logs', desc = 'Refresh logs' },
           y = { 'copy_paths', desc = 'Copy selected log paths' },
           R = { 'reveal_log', desc = 'Reveal log directory' },
           G = { 'open_at_end', desc = 'Open log at end' },
           F = { 'follow_log', desc = 'Follow log updates' },
           X = { 'delete_old_logs', desc = 'Delete old logs' },
+          ['?'] = { 'show_help', desc = 'Show log manager help' },
+          ['<space>'] = { 'action_menu', desc = 'Open log action menu' },
         },
       },
     },

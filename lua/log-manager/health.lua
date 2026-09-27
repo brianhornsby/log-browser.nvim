@@ -10,11 +10,7 @@ function M.check()
     vim.health.error 'Snacks is not available'
   end
 
-  if vim.fn.executable 'tail' == 1 then
-    vim.health.ok '`tail` is available for follow mode'
-  else
-    vim.health.warn '`tail` is not available; follow mode will not work'
-  end
+  vim.health.ok 'Native libuv follow mode is available'
 
   local manager = require 'log-manager'
   local logs = manager.discover()

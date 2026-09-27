@@ -26,21 +26,26 @@ Inside the Snacks picker:
 | `d` | Delete the selected log |
 | `C` | Clear all discovered logs |
 | `s` | Cycle sorting between last modified, name, and size |
-| `1` / `2` / `3` | Sort by modified time, name, or size; press again to reverse |
-| `f` | Cycle between all, non-empty, and empty logs |
 | `r` | Rescan logs without closing the picker |
 | `<Tab>` | Select multiple logs for clear, delete, or copy actions |
 | `y` | Copy the selected log paths |
 | `R` | Reveal the selected log's directory |
 | `G` | Open the selected log at its end |
-| `F` | Follow the selected log in a terminal |
+| `F` | Follow the selected log in a live buffer |
 | `X` | Delete logs older than `cleanup_days` |
+| `?` | Show picker keybindings and actions |
+| `<Space>` | Open the action menu |
 
 The same actions work from the input with `<C-c>`, `<C-d>`, `<C-a>`, and
-`<C-s>`.
+`<C-s>`. `<C-Space>` opens the action menu from the input. Following uses a
+native Neovim buffer, so it does not require an external `tail` command.
+
+Clear and delete confirmations include the affected
+paths, including a short path list for bulk selections.
 Standard Snacks mappings can open an entry in a split or tab.
 
 Modified time and size sort from highest to lowest; names sort alphabetically.
+The picker footer shows the active sort field and direction.
 
 ## lazy.nvim
 
@@ -75,7 +80,6 @@ require('log-manager').setup {
     end,
   },
   filters = {
-    empty = nil, -- nil: all, false: non-empty, true: empty
     min_size = 0,
     modified_after = nil, -- Unix timestamp
     names = nil, -- optional producer-name allowlist
